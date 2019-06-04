@@ -1,0 +1,1 @@
+# discourse-omit-emoji
