@@ -1,0 +1,179 @@
+<script type="text/discourse-plugin" version="0.8.25">
+
+  const emoji = settings.omitted_emoji.split("|");
+  const emojiGroups = settings.omitted_emoji_groups.split("|");
+
+  const { emojiUrlFor } = require("discourse/lib/text");
+  const {
+    extendedEmojiList,
+    isSkinTonableEmoji,
+    emojiSearch
+  } = require("pretty-text/emoji");
+
+  api.modifyClass("component:emoji-picker", {
+    _filterEmojisList() {
+      if (this.filter === "") {
+        this.$filter.find("input[name='filter']").val("");
+        this.$results.empty().hide();
+        this.$list.css("visibility", "visible");
+      } else {
+        const lowerCaseFilter = this.filter.toLowerCase();
+        const filteredCodes = emojiSearch(lowerCaseFilter, { maxResults: 30 });
+        this.$results
+          .empty()
+          .html(
+            filteredCodes.map(code => {
+              const hasDiversity = isSkinTonableEmoji(code);
+              const diversity = hasDiversity ? "diversity" : "";
+              const scaledCode = this._codeWithDiversity(code, hasDiversity);
+              return `<button style="background-image: url('${emojiUrlFor(
+                scaledCode
+              )}')" type="button" class="emoji ${diversity}" tabindex="-1" title="${code}"></button>`;
+            })
+          )
+          .show();
+
+        // START ADDED CODE
+        $.each(emoji, function (index, value) {
+          $(`button.emoji[title="${value}"]`).remove();
+        });
+        // END ADDED CODE
+
+        this._bindHover(this.$results);
+        this._bindEmojiClick(this.$results);
+        this.$list.css("visibility", "hidden");
+      }
+    },
+    show: function() {
+      this._super();
+      // START ADDED CODE
+      $.each(emojiGroups, function (i, eg) {
+        let $elem = $(`[data-section="${eg}"]`);
+        $elem.closest('.category-icon').remove();
+        $elem.remove();
+      });
+      $.each(emoji, function (index, value) {
+        $(`button.emoji[title="${value}"]`).remove();
+      });
+      // END ADDED CODE
+    }
+  });
+
+
+  const { findRawTemplate } = require("discourse/lib/raw-templates");
+  const { translations } = require("pretty-text/emoji/data");
+
+  api.modifyClass("component:d-editor", {
+    _applyEmojiAutocomplete($editorInput) {
+      if (!this.siteSettings.enable_emoji) {
+        return;
+      }
+
+      $editorInput.autocomplete({
+        template: findRawTemplate("emoji-selector-autocomplete"),
+        key: ":",
+        afterComplete: text => {
+          this.set("value", text);
+          this._focusTextArea();
+        },
+
+        onKeyUp: (text, cp) => {
+          const matches = /(?:^|[^a-z])(:(?!:).?[\w-]*:?(?!:)(?:t\d?)?:?) ?$/gi.exec(
+            text.substring(0, cp)
+          );
+
+          if (matches && matches[1]) {
+            return [matches[1]];
+          }
+        },
+
+        transformComplete: v => {
+          if (v.code) {
+            return `${v.code}:`;
+          } else {
+            $editorInput.autocomplete({ cancel: true });
+            this.setProperties({
+              isEditorFocused: $("textarea.d-editor-input").is(":focus"),
+              emojiPickerIsActive: true
+            });
+
+            Ember.run.schedule("afterRender", () => {
+              const filterInput = document.querySelector(
+                ".emoji-picker input[name='filter']"
+              );
+              if (filterInput) {
+                filterInput.value = v.term;
+
+                Ember.run.later(
+                  () => filterInput.dispatchEvent(new Event("input")),
+                  50
+                );
+              }
+            });
+
+            return "";
+          }
+        },
+
+        dataSource: term => {
+          return new Ember.RSVP.Promise(resolve => {
+            const full = `:${term}`;
+            term = term.toLowerCase();
+
+            if (term.length < this.siteSettings.emoji_autocomplete_min_chars) {
+              return resolve([]);
+            }
+
+            if (term === "") {
+              return resolve(["slight_smile", "smile", "wink", "sunny", "blush"]);
+            }
+
+            if (translations[full]) {
+              return resolve([translations[full]]);
+            }
+
+            const match = term.match(/^:?(.*?):t([2-6])?$/);
+            if (match) {
+              const name = match[1];
+              const scale = match[2];
+
+              if (isSkinTonableEmoji(name)) {
+                if (scale) {
+                  return resolve([`${name}:t${scale}`]);
+                } else {
+                  return resolve([2, 3, 4, 5, 6].map(x => `${name}:t${x}`));
+                }
+              }
+            }
+
+            const options = emojiSearch(term, { maxResults: 5 });
+
+            // START ADDED CODE
+            $.each(emoji, function (i, e) {
+              $.each(options, function (ii, o) {
+                if(e == o) {
+                  options.splice(ii, 1); 
+                }
+              });
+            });
+            // END ADDED CODE
+
+            return resolve(options);
+          })
+            .then(list =>
+              list.map(code => {
+                return { code, src: emojiUrlFor(code) };
+              })
+            )
+            .then(list => {
+              if (list.length) {
+                list.push({ label: I18n.t("composer.more_emoji"), term });
+              }
+              return list;
+            });
+        }
+      });
+    }
+  });
+
+</script>

@@ -1,0 +1,8 @@
+omitted_emoji:
+  default: "fu"
+  type: list
+  description: 'Specific emoji that should be omitted. Use the name of an emoji as it appears in the emoji picker.'
+omitted_emoji_groups:
+  type: list
+  default: "smileys_&_emotion|people_&_body|animals_&_nature|food_&_drink|travel_&_places|activities|objects|symbols|flags"
+  description: "Remove the emoji groups you wish to display in emoji picker."
