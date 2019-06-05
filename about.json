@@ -1,6 +1,6 @@
 {
   "name": "Omit Emoji",
-  "about_url": null,
-  "license_url": null,
+  "about_url": "https://meta.discourse.org/t/omit-emoji-component/119562",
+  "license_url": "https://github.com/tshenry/discourse-omit-emoji/blob/master/LICENSE",
   "component": true
 }
