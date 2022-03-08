@@ -5,4 +5,4 @@ omitted_emoji:
 omitted_emoji_groups:
   type: list
   default: "smileys_&_emotion|people_&_body|animals_&_nature|food_&_drink|travel_&_places|activities|objects|symbols|flags"
-  description: "Remove the emoji groups you wish to display in emoji picker."
+  description: "Remove emoji group sections from the emoji picker."
